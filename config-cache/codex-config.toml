@@ -1,0 +1,73 @@
+model = "gpt-5.5"
+model_provider = "openai"
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+personality = "pragmatic"
+approval_policy = "on-request"
+approvals_reviewer = "user"
+allow_login_shell = false
+default_permissions = "nvwb_workspace"
+web_search = "cached"
+project_doc_max_bytes = 65536
+project_doc_fallback_filenames = ["CLAUDE.md"]
+cli_auth_credentials_store = "file"
+mcp_oauth_credentials_store = "auto"
+
+[permissions.nvwb_workspace]
+description = "Workspace editing for AI Workbench projects with agent state and credentials protected."
+extends = ":workspace"
+
+[permissions.nvwb_workspace.workspace_roots]
+"/project" = true
+"/tmp" = true
+
+[permissions.nvwb_workspace.filesystem]
+glob_scan_max_depth = 4
+"~/.codex" = "read"
+"~/.agents" = "read"
+"~/codex_audit_logs" = "write"
+"~/setup.sh" = "read"
+"~/.codex/auth.json" = "deny"
+"~/.codex/history.jsonl" = "deny"
+"~/.codex/sessions" = "deny"
+"~/.codex/memories" = "deny"
+"~/.codex/*.sqlite" = "deny"
+"~/.codex/*.sqlite-*" = "deny"
+"/project/.project" = "read"
+"~/.claude" = "read"
+"/nvwb-agent-config" = "read"
+"/project/onStart.bash" = "read"
+"/project/agentPolicyConfig.yaml" = "read"
+"~/.claude.json" = "deny"
+"~/.claude/.claude.json" = "deny"
+"~/.claude/credentials.json" = "deny"
+
+[permissions.nvwb_workspace.filesystem.":workspace_roots"]
+"." = "write"
+".codex" = "read"
+".agents" = "read"
+".project" = "read"
+"**/.env" = "deny"
+"**/*.pem" = "deny"
+"**/*credentials*" = "deny"
+"**/*secret*" = "deny"
+"**/*token*" = "deny"
+
+[permissions.nvwb_workspace.network]
+enabled = false
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+exclude = ["AWS_*", "AZURE_*", "GCP_*", "GOOGLE_*", "NVIDIA_API_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN", "*_TOKEN", "*_SECRET", "*_KEY", "*PASSWORD*"]
+
+[history]
+persistence = "save-all"
+
+[tui]
+notifications = false
+
+[features]
+hooks = true
+shell_snapshot = true
+multi_agent = true

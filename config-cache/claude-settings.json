@@ -1,0 +1,91 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "Bash(python -m pip install *)",
+      "Bash(python3 -m pip install *)",
+      "Bash(sudo *)",
+      "Bash(docker *)",
+      "Bash(podman *)",
+      "Bash(rm -rf *)",
+      "Bash(nvwb *)"
+    ],
+    "ask": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash (git config *)",
+      "Bash(git rm *)",
+      "Bash(git config *)"
+    ],
+    "additionalDirectories": [
+      "~/",
+      "/tmp/",
+      "/project/"
+    ]
+  },
+  "model": "claude-opus-4-6",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/SessionStart-claude.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/SessionEnd-claude.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "denyWrite": [
+        "~/.claude/settings.json",
+        "~/.claude/skills/ai-workbench-container",
+        "~/.claude/hooks",
+        "~/.claude.json",
+        "~/.claude/credentials.json",
+        "~/setup.sh",
+        "/nvwb-agent-config",
+        "/project/.project",
+        "/project/agentPolicyConfig.yaml",
+        "/project/onStart.bash",
+        "~/.claude",
+        "~/.claude/.claude.json",
+        "~/.codex",
+        "~/.codex/*.sqlite",
+        "~/.codex/*.sqlite-*",
+        "~/.codex/auth.json",
+        "~/.codex/history.jsonl",
+        "~/.codex/memories",
+        "~/.codex/sessions"
+      ],
+      "denyRead": [
+        "~/.claude.json",
+        "~/.claude/credentials.json",
+        "~/.claude/.claude.json",
+        "~/.codex/*.sqlite",
+        "~/.codex/*.sqlite-*",
+        "~/.codex/auth.json",
+        "~/.codex/history.jsonl",
+        "~/.codex/memories",
+        "~/.codex/sessions"
+      ]
+    }
+  },
+  "theme": "dark"
+}

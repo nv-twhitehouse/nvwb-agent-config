@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Render agentPolicyTemplate.yaml into Claude settings.json and Codex config.toml."""
 
+import datetime
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -18,6 +20,24 @@ CLAUDE_OUT = Path(HOME_DIR) / ".claude" / "settings.json"
 
 CODEX_BASE = Path("/nvwb-agent-config/codex-config/config.toml")
 CODEX_OUT = Path(HOME_DIR) / ".codex" / "config.toml"
+
+CACHE_DIR = Path("/nvwb-agent-config/config-cache")
+CACHED_POLICY = CACHE_DIR / "agentPolicyConfig.yaml"
+CACHED_CLAUDE = CACHE_DIR / "claude-settings.json"
+CACHED_CODEX = CACHE_DIR / "codex-config.toml"
+
+AUDIT_LOG = CACHE_DIR / "agent-audit.txt"
+
+
+def audit(message: str):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] renderPolicy: {message}\n"
+    print(line, end="")
+    try:
+        with open(AUDIT_LOG, "a") as f:
+            f.write(line)
+    except OSError:
+        pass
 
 
 def to_tilde(path: str) -> str:
@@ -122,7 +142,7 @@ def render_claude(policy: dict):
         json.dump(merged, f, indent=2)
         f.write("\n")
 
-    print(f"Rendered Claude settings -> {CLAUDE_OUT}")
+    audit(f"Rendered Claude settings -> {CLAUDE_OUT}")
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +207,26 @@ def render_codex(policy: dict):
     with open(CODEX_OUT, "w") as f:
         f.write(doc)
 
-    print(f"Rendered Codex config   -> {CODEX_OUT}")
+    audit(f"Rendered Codex config   -> {CODEX_OUT}")
+
+
+# ---------------------------------------------------------------------------
+# Cache — skip rendering when the policy hasn't changed
+# ---------------------------------------------------------------------------
+
+def policy_changed(policy_path: str) -> bool:
+    if not CACHED_POLICY.exists():
+        return True
+    return Path(policy_path).read_text() != CACHED_POLICY.read_text()
+
+
+def save_cache(policy_path: str):
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(policy_path, CACHED_POLICY)
+    if CLAUDE_OUT.exists():
+        shutil.copy2(CLAUDE_OUT, CACHED_CLAUDE)
+    if CODEX_OUT.exists():
+        shutil.copy2(CODEX_OUT, CACHED_CODEX)
 
 
 # ---------------------------------------------------------------------------
@@ -196,14 +235,26 @@ def render_codex(policy: dict):
 
 def main():
     policy_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_POLICY
+    force = "--force" in sys.argv
 
     if not Path(policy_path).exists():
         print(f"ERROR: Policy file not found: {policy_path}", file=sys.stderr)
         sys.exit(1)
 
+    if not force and not policy_changed(policy_path):
+        audit("Policy unchanged since last render, skipping.")
+        return
+
+    if force:
+        audit(f"Force render from {policy_path}")
+    else:
+        audit(f"Policy changed, rendering from {policy_path}")
+
     policy = load_policy(policy_path)
     render_claude(policy)
     render_codex(policy)
+    save_cache(policy_path)
+    audit("Cache updated.")
 
 
 if __name__ == "__main__":
