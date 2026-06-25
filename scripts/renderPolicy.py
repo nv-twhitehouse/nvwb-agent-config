@@ -183,6 +183,7 @@ def render_claude(policy: dict):
 
 def build_codex_overlay(policy: dict) -> dict:
     paths = policy.get("paths", {})
+    wb = policy.get("workbench", {})
     env = policy.get("environment", {})
 
     write = paths.get("write", [])
@@ -192,13 +193,32 @@ def build_codex_overlay(policy: dict) -> dict:
     env_names = env.get("private_names", [])
     env_patterns = env.get("private_patterns", [])
 
-    workspace_roots = {p: True for p in write}
+    # Only the project directory is a workspace root.  Other writable
+    # paths become absolute filesystem entries so that workspace-root-
+    # relative patterns (.project, .codex, …) don't expand into /tmp
+    # or $HOME where those directories don't exist.
+    project_root = wb.get("project", "/project")
+    workspace_roots = {project_root: True}
 
     filesystem = {}
+    for p in write:
+        if p != project_root:
+            filesystem[to_tilde(p)] = "write"
     for p in read_only:
         filesystem[to_tilde(p)] = "read"
+
+    # Prune deny entries whose parent is already read-only.  Bwrap
+    # mounts the parent read-only first, then tries to create a deny
+    # tombstone inside it — which fails because the parent is already
+    # read-only, crashing every sandboxed command.  The read-only
+    # parent already blocks writes; read-deny is covered by managed-
+    # settings permission rules outside the bwrap sandbox.
+    read_dirs = {to_tilde(p).rstrip("/") for p in read_only}
     for p in private:
-        filesystem[to_tilde(p)] = "deny"
+        tp = to_tilde(p)
+        if any(tp.startswith(rd + "/") for rd in read_dirs):
+            continue
+        filesystem[tp] = "deny"
 
     ws_root_rules = {".": "write"}
     for pat in proj_patterns:
@@ -501,6 +521,13 @@ def main():
         print(f"ERROR: Policy file not found: {policy_path}", file=sys.stderr)
         sys.exit(1)
 
+    policy = load_policy(policy_path)
+
+    # Always ensure placeholders — bwrap needs deny-path mount targets
+    # to exist even when rendering is skipped (cache hit).  Placeholders
+    # can disappear between restarts while the cache stays intact.
+    ensure_deny_placeholders(policy)
+
     if not force and not needs_render(policy_path):
         audit("Policy unchanged and outputs present, skipping.")
         return
@@ -510,12 +537,10 @@ def main():
     else:
         audit(f"Policy changed, rendering from {policy_path}")
 
-    policy = load_policy(policy_path)
     render_claude(policy)
     render_codex(policy)
     render_codex_hooks(policy)
     render_managed(policy)
-    ensure_deny_placeholders(policy)
     save_cache(policy_path)
     audit("Cache updated.")
 

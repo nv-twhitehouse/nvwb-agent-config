@@ -116,6 +116,18 @@ class TestBuildCodexOverlay(unittest.TestCase):
         overlay = renderPolicy.build_codex_overlay(policy)
         self.assertEqual(overlay["permissions"]["nvwb_workspace"]["workspace_roots"]["/project"], True)
 
+    def test_non_project_write_paths_not_in_workspace_roots(self):
+        policy = self._minimal_policy(
+            paths={"write": ["/project", "/tmp", "/home/workbench"], "read_only": [], "private": [], "private_project_patterns": []},
+            workbench={"project": "/project"},
+        )
+        overlay = renderPolicy.build_codex_overlay(policy)
+        roots = overlay["permissions"]["nvwb_workspace"]["workspace_roots"]
+        self.assertEqual(list(roots.keys()), ["/project"])
+        fs = overlay["permissions"]["nvwb_workspace"]["filesystem"]
+        self.assertEqual(fs["/tmp"], "write")
+        self.assertEqual(fs["~"], "write")
+
     def test_read_only_filesystem_rules(self):
         policy = self._minimal_policy(paths={"write": [], "read_only": ["/home/workbench/.codex"], "private": [], "private_project_patterns": []})
         overlay = renderPolicy.build_codex_overlay(policy)
@@ -125,6 +137,30 @@ class TestBuildCodexOverlay(unittest.TestCase):
         policy = self._minimal_policy(paths={"write": [], "read_only": [], "private": ["/home/workbench/.codex/auth.json"], "private_project_patterns": []})
         overlay = renderPolicy.build_codex_overlay(policy)
         self.assertEqual(overlay["permissions"]["nvwb_workspace"]["filesystem"]["~/.codex/auth.json"], "deny")
+
+    def test_deny_under_read_only_parent_pruned(self):
+        policy = self._minimal_policy(paths={
+            "write": [],
+            "read_only": ["/home/workbench/.claude"],
+            "private": ["/home/workbench/.claude/credentials.json", "/home/workbench/.claude/.claude.json"],
+            "private_project_patterns": [],
+        })
+        overlay = renderPolicy.build_codex_overlay(policy)
+        fs = overlay["permissions"]["nvwb_workspace"]["filesystem"]
+        self.assertEqual(fs["~/.claude"], "read")
+        self.assertNotIn("~/.claude/credentials.json", fs)
+        self.assertNotIn("~/.claude/.claude.json", fs)
+
+    def test_deny_without_read_only_parent_kept(self):
+        policy = self._minimal_policy(paths={
+            "write": [],
+            "read_only": [],
+            "private": ["/home/workbench/.claude.json"],
+            "private_project_patterns": [],
+        })
+        overlay = renderPolicy.build_codex_overlay(policy)
+        fs = overlay["permissions"]["nvwb_workspace"]["filesystem"]
+        self.assertEqual(fs["~/.claude.json"], "deny")
 
     def test_environment_exclude_merged(self):
         policy = self._minimal_policy(environment={"private_names": ["FOO"], "private_patterns": ["BAR_*"]})

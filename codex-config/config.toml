@@ -34,12 +34,6 @@ glob_scan_max_depth = 4
 "~/.agents" = "read"
 "~/codex_audit_logs" = "write"
 "~/setup.sh" = "read"
-"~/.codex/auth.json" = "deny"
-"~/.codex/history.jsonl" = "deny"
-"~/.codex/sessions" = "deny"
-"~/.codex/memories" = "deny"
-"~/.codex/*.sqlite" = "deny"
-"~/.codex/*.sqlite-*" = "deny"
 
 [permissions.nvwb_workspace.filesystem.":workspace_roots"]
 "." = "write"
