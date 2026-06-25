@@ -52,11 +52,8 @@ paths:
 
   # Sensitive project-relative patterns.
   private_project_patterns:
-    - "**/.env"
     - "**/*.pem"
-    - "**/*credentials*"
-    - "**/*secret*"
-    - "**/*token*"
+
 
 commands:
   # Commands that require explicit user confirmation.

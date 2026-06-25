@@ -49,17 +49,6 @@
           }
         ]
       }
-    ],
-    "SessionEnd": [
-      {
-       "matcher": "",
-       "hooks": [
-	 {
-           "type": "command",
-	   "command": "$HOME/.claude/hooks/SessionEnd-claude.sh"
-	}
-      ]
-     }
     ]
   }
 }
