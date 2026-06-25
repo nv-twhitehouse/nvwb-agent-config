@@ -40,11 +40,6 @@ glob_scan_max_depth = 4
 ".codex" = "read"
 ".agents" = "read"
 ".project" = "read"
-"**/.env" = "deny"
-"**/*.pem" = "deny"
-"**/*credentials*" = "deny"
-"**/*secret*" = "deny"
-"**/*token*" = "deny"
 
 [permissions.nvwb_workspace.network]
 enabled = false
