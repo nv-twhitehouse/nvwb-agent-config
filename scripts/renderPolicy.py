@@ -48,6 +48,11 @@ MANAGED_ALLOWED = CACHE_DIR / "bypassAllowed.json"
 AUDIT_LOG = CACHE_DIR / "logs" / "agent-audit.txt"
 
 
+def _clear_dangling_symlink(path: Path):
+    if path.is_symlink() and not path.exists():
+        path.unlink()
+
+
 def audit(message: str):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{timestamp}] renderPolicy: {message}\n"
@@ -164,6 +169,7 @@ def render_claude(policy: dict):
     )
 
     CLAUDE_OUT.parent.mkdir(parents=True, exist_ok=True)
+    _clear_dangling_symlink(CLAUDE_OUT)
     with open(CLAUDE_OUT, "w") as f:
         json.dump(merged, f, indent=2)
         f.write("\n")
@@ -230,6 +236,7 @@ def render_codex(policy: dict):
     doc = tomlkit.dumps(merged)
 
     CODEX_OUT.parent.mkdir(parents=True, exist_ok=True)
+    _clear_dangling_symlink(CODEX_OUT)
     with open(CODEX_OUT, "w") as f:
         f.write(doc)
 
@@ -336,6 +343,7 @@ def render_codex_hooks(policy: dict):
     )
 
     CODEX_HOOKS_OUT.parent.mkdir(parents=True, exist_ok=True)
+    _clear_dangling_symlink(CODEX_HOOKS_OUT)
     with open(CODEX_HOOKS_OUT, "w") as f:
         json.dump(hooks, f, indent=2)
         f.write("\n")
@@ -387,6 +395,7 @@ def build_managed_overlay(policy: dict, bypass_blocked: bool) -> dict:
 
 def _write_json(path: Path, data: dict):
     path.parent.mkdir(parents=True, exist_ok=True)
+    _clear_dangling_symlink(path)
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
@@ -398,6 +407,50 @@ def render_managed(policy: dict):
     _write_json(MANAGED_ALLOWED, build_managed_overlay(policy, bypass_blocked=False))
     n = len(build_managed_overlay(policy, bypass_blocked=True)["permissions"]["deny"])
     audit(f"Staged managed settings -> {MANAGED_BLOCKED.name} / {MANAGED_ALLOWED.name} ({n} deny rules)")
+
+
+# ---------------------------------------------------------------------------
+# Deny-path placeholders — bwrap needs mount targets to exist
+# ---------------------------------------------------------------------------
+
+def ensure_deny_placeholders(policy: dict):
+    """Create placeholders for private paths under read-only parents.
+
+    Codex's bwrap sandbox bind-mounts over deny paths.  If the target doesn't
+    exist and its parent is already read-only, bwrap can't create the mount
+    point and fails globally — blocking all shell commands.
+    """
+    paths = policy.get("paths", {})
+    read_only = paths.get("read_only", [])
+    private = paths.get("private", [])
+
+    created = 0
+    for p in private:
+        if any(c in p for c in "*?["):
+            continue
+
+        target = Path(p)
+        if target.is_symlink() and not target.exists():
+            _clear_dangling_symlink(target)
+        if target.exists():
+            continue
+        if not target.parent.exists():
+            continue
+
+        under_read_only = any(
+            p.startswith(ro.rstrip("/") + "/") for ro in read_only
+        )
+        if not under_read_only:
+            continue
+
+        if "." in target.name:
+            target.touch()
+        else:
+            target.mkdir(exist_ok=True)
+        created += 1
+
+    if created:
+        audit(f"Created {created} deny-path placeholder(s) for bwrap")
 
 
 # ---------------------------------------------------------------------------
@@ -462,6 +515,7 @@ def main():
     render_codex(policy)
     render_codex_hooks(policy)
     render_managed(policy)
+    ensure_deny_placeholders(policy)
     save_cache(policy_path)
     audit("Cache updated.")
 
