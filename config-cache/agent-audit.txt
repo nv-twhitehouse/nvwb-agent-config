@@ -1,5 +1,0 @@
-[2026-06-24 18:32:11] renderPolicy: Force render from /project/agentPolicyConfig.yaml
-[2026-06-24 18:32:11] renderPolicy: Rendered Claude settings -> /home/workbench/.claude/settings.json
-[2026-06-24 18:32:11] renderPolicy: Rendered Codex config   -> /home/workbench/.codex/config.toml
-[2026-06-24 18:32:11] renderPolicy: Cache updated.
-[2026-06-24 18:32:18] renderPolicy: Policy unchanged since last render, skipping.

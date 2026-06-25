@@ -6,14 +6,20 @@
 # Workbench container conventions:
 # - Home directory: /home/workbench
 # - Project repository: /project
-# - Agent config repository: /nvwb-agent-config
+# - Agent config repository: /home/workbench/nvwb-agent-config
 
 profile: ai-workbench-container
+
+# Managed-settings stance installed by onStart.bash:
+#   bypassBlocked  - lock out the bypass/auto permission modes (recommended)
+#   bypassAllowed  - permit them (more permissive)
+managed_settings_controls: bypassBlocked
 
 workbench:
   home: /home/workbench
   project: /project
-  agent_config_repo: /nvwb-agent-config
+  agent_config_repo: /home/workbench/nvwb-agent-config
+  cache_dir: /home/workbench/cache-config
 
 paths:
   # Paths agents may read and modify.
@@ -27,9 +33,10 @@ paths:
     - /home/workbench/.codex
     - /home/workbench/.agents
     - /home/workbench/.claude
-    - /nvwb-agent-config
+    - /home/workbench/nvwb-agent-config
+    - /home/workbench/cache-config
     - /project/onStart.bash
-    - /project/agentPolicy.yaml
+    - /project/agentPolicyConfig.yaml
 
   # Paths agents should neither read nor modify.
   private:
