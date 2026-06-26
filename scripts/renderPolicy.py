@@ -134,8 +134,7 @@ def build_claude_overlay(policy: dict) -> dict:
 def render_claude(policy: dict):
     overlay = build_claude_overlay(policy)
 
-    base_path = CLAUDE_OUT if CLAUDE_OUT.exists() else CLAUDE_BASE
-    with open(base_path) as f:
+    with open(CLAUDE_BASE) as f:
         base = json.load(f)
 
     merged = deep_merge(base, overlay)
@@ -243,8 +242,7 @@ def build_codex_overlay(policy: dict) -> dict:
 def render_codex(policy: dict):
     overlay = build_codex_overlay(policy)
 
-    base_path = CODEX_OUT if CODEX_OUT.exists() else CODEX_BASE
-    with open(base_path, "rb") as f:
+    with open(CODEX_BASE, "rb") as f:
         base = tomli.loads(f.read().decode())
 
     merged = deep_merge(base, overlay)
