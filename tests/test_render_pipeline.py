@@ -16,7 +16,7 @@ _MODULE_CONSTANTS = [
     "CLAUDE_BASE", "CLAUDE_HOOKS_DIR", "CLAUDE_OUT",
     "CODEX_BASE", "CODEX_OUT",
     "CODEX_HOOKS_BASE", "CODEX_HOOKS_DIR", "CODEX_HOOKS_OUT",
-    "CACHED_POLICY", "CACHED_CLAUDE", "CACHED_CODEX", "CACHED_CODEX_HOOKS",
+    "CACHED_POLICY", "CACHED_CLAUDE", "CACHED_CODEX",
     "MANAGED_BLOCKED", "MANAGED_ALLOWED", "AUDIT_LOG",
 ]
 
@@ -65,7 +65,6 @@ def _build_sandbox(tmpdir):
     renderPolicy.CACHED_POLICY = cache / "agentPolicyConfig.yaml"
     renderPolicy.CACHED_CLAUDE = cache / "claude-settings.json"
     renderPolicy.CACHED_CODEX = cache / "codex-config.toml"
-    renderPolicy.CACHED_CODEX_HOOKS = cache / "codex-hooks.json"
     renderPolicy.MANAGED_BLOCKED = cache / "bypassBlocked.json"
     renderPolicy.MANAGED_ALLOWED = cache / "bypassAllowed.json"
     renderPolicy.AUDIT_LOG = cache / "logs" / "agent-audit.txt"
@@ -105,6 +104,27 @@ class TestRenderClaude(unittest.TestCase):
         deny = data["permissions"]["deny"]
         self.assertTrue(any("sudo" in r for r in deny))
 
+    def test_preserves_existing_hooks(self):
+        renderPolicy.CLAUDE_OUT.write_text(json.dumps({
+            "hooks": {
+                "SessionStart": [
+                    {
+                        "matcher": "",
+                        "hooks": [
+                            {"type": "command", "command": "/project/custom-hook.sh"}
+                        ],
+                    }
+                ]
+            }
+        }))
+
+        renderPolicy.render_claude(self.policy)
+
+        with open(renderPolicy.CLAUDE_OUT) as f:
+            data = json.load(f)
+        command = data["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+        self.assertEqual(command, "/project/custom-hook.sh")
+
 
 class TestRenderCodex(unittest.TestCase):
     def setUp(self):
@@ -134,7 +154,7 @@ class TestRenderCodex(unittest.TestCase):
         self.assertIn("NVIDIA_API_KEY", exclude)
 
 
-class TestRenderCodexHooks(unittest.TestCase):
+class TestSeedCodexHooks(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         self.originals, self.policy = _build_sandbox(self.tmpdir)
@@ -143,8 +163,8 @@ class TestRenderCodexHooks(unittest.TestCase):
         _restore(self.originals)
         shutil.rmtree(self.tmpdir)
 
-    def test_renders_valid_json(self):
-        renderPolicy.render_codex_hooks(self.policy)
+    def test_seeds_valid_json(self):
+        renderPolicy.seed_codex_hooks()
         out = renderPolicy.CODEX_HOOKS_OUT
         self.assertTrue(out.exists())
         with open(out) as f:
@@ -152,10 +172,29 @@ class TestRenderCodexHooks(unittest.TestCase):
         self.assertIn("hooks", data)
 
     def test_output_is_regular_file(self):
-        renderPolicy.render_codex_hooks(self.policy)
+        renderPolicy.seed_codex_hooks()
         out = renderPolicy.CODEX_HOOKS_OUT
         self.assertFalse(out.is_symlink())
         self.assertTrue(out.is_file())
+
+    def test_preserves_existing_hooks_without_force(self):
+        renderPolicy.CODEX_HOOKS_OUT.write_text('{"custom": true}\n')
+
+        renderPolicy.seed_codex_hooks()
+
+        with open(renderPolicy.CODEX_HOOKS_OUT) as f:
+            data = json.load(f)
+        self.assertEqual(data, {"custom": True})
+
+    def test_force_replaces_existing_hooks(self):
+        renderPolicy.CODEX_HOOKS_OUT.write_text('{"custom": true}\n')
+
+        renderPolicy.seed_codex_hooks(force=True)
+
+        with open(renderPolicy.CODEX_HOOKS_OUT) as f:
+            data = json.load(f)
+        self.assertIn("hooks", data)
+        self.assertNotIn("custom", data)
 
 
 class TestRenderManaged(unittest.TestCase):
@@ -198,7 +237,7 @@ class TestFullPipeline(unittest.TestCase):
     def test_all_outputs_created(self):
         renderPolicy.render_claude(self.policy)
         renderPolicy.render_codex(self.policy)
-        renderPolicy.render_codex_hooks(self.policy)
+        renderPolicy.seed_codex_hooks()
         renderPolicy.render_managed(self.policy)
 
         self.assertTrue(renderPolicy.CLAUDE_OUT.exists())
@@ -213,7 +252,7 @@ class TestFullPipeline(unittest.TestCase):
         self.assertTrue(out.is_symlink())
         self.assertFalse(out.exists())
 
-        renderPolicy.render_codex_hooks(self.policy)
+        renderPolicy.seed_codex_hooks()
         self.assertTrue(out.exists())
         self.assertFalse(out.is_symlink())
 
@@ -222,7 +261,7 @@ class TestFullPipeline(unittest.TestCase):
 
         renderPolicy.render_claude(self.policy)
         renderPolicy.render_codex(self.policy)
-        renderPolicy.render_codex_hooks(self.policy)
+        renderPolicy.seed_codex_hooks()
         renderPolicy.render_managed(self.policy)
 
         self.assertTrue(renderPolicy.MANAGED_BLOCKED.exists())
@@ -231,7 +270,7 @@ class TestFullPipeline(unittest.TestCase):
     def test_missing_hooks_base_skips(self):
         renderPolicy.CODEX_HOOKS_BASE.unlink()
 
-        renderPolicy.render_codex_hooks(self.policy)
+        renderPolicy.seed_codex_hooks()
         self.assertFalse(renderPolicy.CODEX_HOOKS_OUT.exists())
 
         renderPolicy.render_managed(self.policy)

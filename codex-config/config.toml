@@ -33,7 +33,6 @@ glob_scan_max_depth = 4
 "~/.codex" = "read"
 "~/.agents" = "read"
 "~/codex_audit_logs" = "write"
-"~/setup.sh" = "read"
 
 [permissions.nvwb_workspace.filesystem.":workspace_roots"]
 "." = "write"

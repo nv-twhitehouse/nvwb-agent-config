@@ -4,10 +4,18 @@ This repository provides policy-driven agent configuration for NVIDIA AI
 Workbench project containers. It targets Claude Code and the Codex CLI.
 
 A single policy file (`agentPolicyConfig.yaml`) in each project controls
-what agents can read, write, execute, and access. The `renderPolicy.py`
-script translates that policy into the native configuration files each
-harness expects. The container's `onStart.bash` script orchestrates the
-full pipeline on every container start.
+sandboxing, filesystem protections, command rules, environment filtering, and
+managed settings. The `renderPolicy.py` script translates that policy into the
+native configuration files each harness expects.
+
+Hooks and skills are bootstrap defaults. The startup pipeline installs or links
+the default hook scripts and skills, but once a user's runtime hook config
+exists it is treated as user-owned state. Project-specific dynamic behavior
+belongs in `/project`, because that is the part of the environment that is
+versioned with the project.
+
+The container's `onStart.bash` script orchestrates the full pipeline on every
+container start.
 
 ## Who This Is For
 
@@ -28,7 +36,7 @@ This is most useful when you want agents to consistently understand:
 agentPolicyTemplate.yaml          # Template seeded into projects as agentPolicyConfig.yaml
 
 scripts/
-  renderPolicy.py                 # Renders policy YAML into harness-native configs
+  renderPolicy.py                 # Renders policy YAML and seeds bootstrap hooks
   sanitizedHarnessLauncher.sh     # Wrapper that strips secrets from agent process env
 
 claude-config/
@@ -40,14 +48,14 @@ claude-config/
 codex-config/
   config.toml                     # Base config (overlay target for renderPolicy.py)
   AGENTS.md                       # Default project guidance
-  hooks.json                      # Base hooks definition (rendered by renderPolicy.py)
+  hooks.json                      # Bootstrap hooks definition (seeded if missing)
   hooks/ai-workbench-container/   # Session hooks (symlinked into ~/.codex/hooks/)
   skills/ai-workbench-container/  # Skills (symlinked into ~/.codex/skills/)
   rules/                          # Command approval/blocking rules
 
-config-cache/                     # Runtime cache (not committed)
+cache-config/                     # Runtime cache (not committed)
 
-tests/                            # Unit tests for renderPolicy.py (59 tests, stdlib unittest)
+tests/                            # Unit tests for renderPolicy.py (63 tests, stdlib unittest)
 ```
 
 ## How It Works
@@ -60,16 +68,16 @@ Every container start runs this sequence:
    (root-owned, `chattr +a`).
 2. **Clone** — if the config repo volume is empty, clones from the
    `$nvwb_agent_config` environment variable.
-3. **Symlink hooks and skills** — links hook and skill directories from
-   this repo into `~/.claude/` and `~/.codex/`.
+3. **Bootstrap hooks and skills** — links hook script and skill directories
+   from this repo into `~/.claude/` and `~/.codex/`.
 4. **Seed project files** — copies `CLAUDE.md` and `agentPolicyTemplate.yaml`
    into `/project/` if they don't already exist.
-5. **Render policy** — runs `renderPolicy.py /project/agentPolicyConfig.yaml`,
-   which reads the project's policy and overlays it onto the base configs
-   to produce:
+5. **Render policy / seed hooks** — runs `renderPolicy.py /project/agentPolicyConfig.yaml`,
+   which overlays the project's policy onto the base configs and seeds Codex
+   hook config only when it is missing:
    - `~/.claude/settings.json`
    - `~/.codex/config.toml`
-   - `~/.codex/hooks.json`
+   - `~/.codex/hooks.json` only if missing
    - Staged managed-settings variants in `cache-config/`
 6. **Install managed settings** — copies the selected variant
    (`bypassBlocked` or `bypassAllowed`) to
@@ -84,6 +92,12 @@ Reads a tool-agnostic policy YAML and produces harness-native configs by
 overlaying policy-derived rules onto the base templates in `claude-config/`
 and `codex-config/`.
 
+Policy rendering owns sandboxing, file access, command rules, environment
+filtering, and managed-settings variants. It does not continuously manage hook
+configuration. Existing Claude hooks in `~/.claude/settings.json` are preserved,
+and existing Codex hooks in `~/.codex/hooks.json` are preserved unless
+`--force-hooks` is used.
+
 Policy sections map to outputs as follows:
 
 | Policy section | Claude settings.json | Codex config.toml | Managed settings |
@@ -96,8 +110,25 @@ Policy sections map to outputs as follows:
 | `commands.deny` | `permissions.deny` | — | `permissions.deny` |
 | `environment.*` | — | `shell_environment_policy.exclude` | — |
 
-Supports `--force` to skip cache checks. Caches policy and rendered
-outputs in `config-cache/` to avoid unnecessary rewrites on restart.
+Supports:
+
+- `--force` to skip policy-render cache checks.
+- `--force-hooks` to intentionally replace existing Codex hooks with the
+  bootstrap `codex-config/hooks.json`.
+
+Caches policy and rendered policy outputs in `cache-config/` to avoid
+unnecessary rewrites on restart. Hook config is not part of that render cache.
+
+### Hooks and Audit
+
+Session hooks provide compact startup context to the agent and append audit
+entries to `/home/workbench/cache-config/logs/agent-audit.txt`.
+
+- Codex `SessionStart` writes plain text context.
+- Claude `SessionStart` writes the JSON shape Claude expects for hook output.
+- Hooks log their resolved path and SHA-256 for traceability.
+- Hooks do not render policy, repair symlinks, seed project files, or duplicate
+  `onStart.bash` setup logic.
 
 ### sanitizedHarnessLauncher.sh
 
@@ -161,7 +192,7 @@ configuration formats.
 Runtime config lives in `~/.claude/`:
 
 ```text
-~/.claude/settings.json           # Rendered by renderPolicy.py
+~/.claude/settings.json           # Rendered by renderPolicy.py; existing hooks preserved
 ~/.claude/hooks/<name>/           # Symlinked from this repo
 ~/.claude/skills/<name>/          # Symlinked from this repo
 ```
@@ -179,7 +210,7 @@ Runtime config lives in `~/.codex/`:
 
 ```text
 ~/.codex/config.toml              # Rendered by renderPolicy.py
-~/.codex/hooks.json               # Rendered by renderPolicy.py
+~/.codex/hooks.json               # Seeded when missing; user-owned after bootstrap
 ~/.codex/hooks/<name>/            # Symlinked from this repo
 ~/.codex/skills/<name>/           # Symlinked from this repo
 ```
@@ -189,7 +220,6 @@ Project-level guidance:
 ```text
 /project/AGENTS.md
 /project/.codex/
-/project/.agents/skills/
 ```
 
 ## Tests
@@ -212,6 +242,7 @@ login state across restarts.
 
 ## Status
 
-Active development. The policy rendering pipeline and managed settings
-installation are functional. Review the policy file and rendered outputs
-before relying on them as an enforced security boundary.
+Active development. The policy rendering pipeline, bootstrap hooks, skills,
+audit logging, and managed-settings installation are functional. Review the
+policy file and rendered outputs before relying on them as an enforced security
+boundary.

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.codex/hooks/SessionStart-codex.sh",
+            "command": "$HOME/.codex/hooks/ai-workbench-container/SessionStart-codex.sh",
             "timeout": 30,
             "statusMessage": "Loading Workbench context"
           }

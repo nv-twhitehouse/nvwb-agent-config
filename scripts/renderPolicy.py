@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Render agentPolicyTemplate.yaml into Claude settings.json and Codex config.toml."""
 
+import argparse
 import datetime
 import json
 import os
@@ -36,8 +37,6 @@ CODEX_HOOKS_OUT = Path(HOME_DIR) / ".codex" / "hooks.json"
 CACHED_POLICY = CACHE_DIR / "agentPolicyConfig.yaml"
 CACHED_CLAUDE = CACHE_DIR / "claude-settings.json"
 CACHED_CODEX = CACHE_DIR / "codex-config.toml"
-CACHED_CODEX_HOOKS = CACHE_DIR / "codex-hooks.json"
-
 # Staged managed-settings variants. renderPolicy stages BOTH here (unprivileged);
 # onStart.bash selects one per `managed_settings_controls` and installs it
 # root-owned to /etc/claude-code/managed-settings.d/.
@@ -137,6 +136,15 @@ def render_claude(policy: dict):
     with open(CLAUDE_BASE) as f:
         base = json.load(f)
 
+    existing_hooks = None
+    if CLAUDE_OUT.exists():
+        try:
+            with open(CLAUDE_OUT) as f:
+                existing = json.load(f)
+            existing_hooks = existing.get("hooks")
+        except (OSError, json.JSONDecodeError):
+            existing_hooks = None
+
     merged = deep_merge(base, overlay)
 
     bp = base.get("permissions", {})
@@ -160,12 +168,16 @@ def render_claude(policy: dict):
         bsf.get("denyRead", []), osf.get("denyRead", [])
     )
 
-    merged, hook_rewrites = _rewrite_hooks_json(
-        merged,
-        _hook_relative_paths(CLAUDE_HOOKS_DIR),
-        CLAUDE_HOOKS_DIR,
-        ".claude",
-    )
+    if existing_hooks is not None:
+        merged["hooks"] = existing_hooks
+        hook_rewrites = 0
+    else:
+        merged, hook_rewrites = _rewrite_hooks_json(
+            merged,
+            _hook_relative_paths(CLAUDE_HOOKS_DIR),
+            CLAUDE_HOOKS_DIR,
+            ".claude",
+        )
 
     CLAUDE_OUT.parent.mkdir(parents=True, exist_ok=True)
     _clear_dangling_symlink(CLAUDE_OUT)
@@ -345,7 +357,11 @@ def _rewrite_hooks_json(value, hook_paths: dict, hooks_dir: Path, config_dir: st
     return value, 0
 
 
-def render_codex_hooks(policy: dict):
+def seed_codex_hooks(force: bool = False):
+    if CODEX_HOOKS_OUT.exists() and not force:
+        audit(f"Codex hooks already present, preserving {CODEX_HOOKS_OUT}")
+        return
+
     if not CODEX_HOOKS_BASE.exists():
         audit(f"WARNING: codex hooks base missing: {CODEX_HOOKS_BASE}")
         return
@@ -366,8 +382,8 @@ def render_codex_hooks(policy: dict):
         json.dump(hooks, f, indent=2)
         f.write("\n")
 
-    audit(f"Rendered Codex hooks    -> {CODEX_HOOKS_OUT} ({changed} command path rewrite(s))")
-
+    action = "Re-seeded" if force else "Seeded"
+    audit(f"{action} Codex hooks    -> {CODEX_HOOKS_OUT} ({changed} command path rewrite(s))")
 
 # ---------------------------------------------------------------------------
 # Managed settings — the tamper-proof lock (permissions only; sandbox stays in
@@ -492,7 +508,6 @@ def needs_render(policy_path: str) -> bool:
     if policy_changed(policy_path):
         return True
     return not (CLAUDE_OUT.exists() and CODEX_OUT.exists()
-                and CODEX_HOOKS_OUT.exists()
                 and MANAGED_BLOCKED.exists() and MANAGED_ALLOWED.exists())
 
 
@@ -503,8 +518,6 @@ def save_cache(policy_path: str):
         shutil.copy2(CLAUDE_OUT, CACHED_CLAUDE)
     if CODEX_OUT.exists():
         shutil.copy2(CODEX_OUT, CACHED_CODEX)
-    if CODEX_HOOKS_OUT.exists():
-        shutil.copy2(CODEX_HOOKS_OUT, CACHED_CODEX_HOOKS)
 
 
 # ---------------------------------------------------------------------------
@@ -512,8 +525,19 @@ def save_cache(policy_path: str):
 # ---------------------------------------------------------------------------
 
 def main():
-    policy_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_POLICY
-    force = "--force" in sys.argv
+    parser = argparse.ArgumentParser(
+        description="Render agentPolicyConfig.yaml into agent runtime configs."
+    )
+    parser.add_argument("policy_path", nargs="?", default=DEFAULT_POLICY)
+    parser.add_argument("--force", action="store_true",
+                        help="render policy outputs even when the cache is current")
+    parser.add_argument("--force-hooks", action="store_true",
+                        help="replace existing Codex hooks with bootstrap hooks")
+    args = parser.parse_args()
+
+    policy_path = args.policy_path
+    force = args.force
+    force_hooks = args.force_hooks
 
     if not Path(policy_path).exists():
         print(f"ERROR: Policy file not found: {policy_path}", file=sys.stderr)
@@ -525,6 +549,7 @@ def main():
     # to exist even when rendering is skipped (cache hit).  Placeholders
     # can disappear between restarts while the cache stays intact.
     ensure_deny_placeholders(policy)
+    seed_codex_hooks(force=force_hooks)
 
     if not force and not needs_render(policy_path):
         audit("Policy unchanged and outputs present, skipping.")
@@ -537,7 +562,6 @@ def main():
 
     render_claude(policy)
     render_codex(policy)
-    render_codex_hooks(policy)
     render_managed(policy)
     save_cache(policy_path)
     audit("Cache updated.")

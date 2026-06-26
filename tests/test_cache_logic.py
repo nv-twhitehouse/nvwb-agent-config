@@ -15,7 +15,7 @@ _MODULE_CONSTANTS = [
     "CLAUDE_BASE", "CLAUDE_HOOKS_DIR", "CLAUDE_OUT",
     "CODEX_BASE", "CODEX_OUT",
     "CODEX_HOOKS_BASE", "CODEX_HOOKS_DIR", "CODEX_HOOKS_OUT",
-    "CACHED_POLICY", "CACHED_CLAUDE", "CACHED_CODEX", "CACHED_CODEX_HOOKS",
+    "CACHED_POLICY", "CACHED_CLAUDE", "CACHED_CODEX",
     "MANAGED_BLOCKED", "MANAGED_ALLOWED", "AUDIT_LOG",
 ]
 
@@ -60,7 +60,6 @@ def _build_sandbox(tmpdir):
     renderPolicy.CACHED_POLICY = cache / "agentPolicyConfig.yaml"
     renderPolicy.CACHED_CLAUDE = cache / "claude-settings.json"
     renderPolicy.CACHED_CODEX = cache / "codex-config.toml"
-    renderPolicy.CACHED_CODEX_HOOKS = cache / "codex-hooks.json"
     renderPolicy.MANAGED_BLOCKED = cache / "bypassBlocked.json"
     renderPolicy.MANAGED_ALLOWED = cache / "bypassAllowed.json"
     renderPolicy.AUDIT_LOG = cache / "logs" / "agent-audit.txt"
@@ -77,7 +76,7 @@ def _render_all(policy_path):
     policy = renderPolicy.load_policy(policy_path)
     renderPolicy.render_claude(policy)
     renderPolicy.render_codex(policy)
-    renderPolicy.render_codex_hooks(policy)
+    renderPolicy.seed_codex_hooks()
     renderPolicy.render_managed(policy)
     renderPolicy.save_cache(policy_path)
 
@@ -119,19 +118,25 @@ class TestNeedsRender(unittest.TestCase):
         _render_all(self.policy_path)
         self.assertFalse(renderPolicy.needs_render(self.policy_path))
 
-        renderPolicy.CODEX_HOOKS_OUT.unlink()
+        renderPolicy.CODEX_OUT.unlink()
         self.assertTrue(renderPolicy.needs_render(self.policy_path))
 
     def test_unchanged_and_all_present_skips(self):
         _render_all(self.policy_path)
         self.assertFalse(renderPolicy.needs_render(self.policy_path))
 
-    def test_dangling_symlink_counts_as_missing(self):
+    def test_missing_bootstrap_hooks_do_not_force_policy_render(self):
+        _render_all(self.policy_path)
+
+        renderPolicy.CODEX_HOOKS_OUT.unlink()
+        self.assertFalse(renderPolicy.needs_render(self.policy_path))
+
+    def test_dangling_bootstrap_hooks_do_not_force_policy_render(self):
         _render_all(self.policy_path)
 
         renderPolicy.CODEX_HOOKS_OUT.unlink()
         renderPolicy.CODEX_HOOKS_OUT.symlink_to("/nonexistent/target")
-        self.assertTrue(renderPolicy.needs_render(self.policy_path))
+        self.assertFalse(renderPolicy.needs_render(self.policy_path))
 
 
 class TestSaveCache(unittest.TestCase):
