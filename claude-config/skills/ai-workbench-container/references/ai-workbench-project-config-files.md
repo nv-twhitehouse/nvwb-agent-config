@@ -39,7 +39,10 @@ libtesseract-dev
   - Avoid inline comments.
   - Do not add `--index-url` or `--extra-index-url`; packages requiring custom indexes should be installed in `preBuild.bash` before requirements processing.
 - **Runs:** After `preBuild.bash`, before `postBuild.bash`.
-- **Effect of changes:** Container rebuild required.
+- **Effect of changes:** Container rebuild required for the dependency to be
+  baked into the image. The AI Workbench Desktop App package installer can also
+  update this file and install the package into the running container
+  immediately.
 
 Example:
 
@@ -121,7 +124,7 @@ System-level changes belong in build scripts or `apt.txt`, not in the running co
 | File | Change requires |
 | --- | --- |
 | `apt.txt` | Rebuild |
-| `requirements.txt` | Rebuild |
+| `requirements.txt` | Rebuild; Desktop App package installer can also install into the running container |
 | `preBuild.bash` | Rebuild |
 | `postBuild.bash` | Rebuild |
 | `variables.env` | Restart |

@@ -132,6 +132,16 @@ entries to `/home/workbench/cache-config/logs/agent-audit.txt`.
 - Hooks do not render policy, repair symlinks, seed policy files, or duplicate
   `onStart.bash` setup logic.
 
+### Guardrail Guidance
+
+Default guidance tells agents to anticipate blocked runtime actions and explain
+the supported Workbench path. For Python packages, agents should point users to
+the AI Workbench Desktop App package installer, which updates
+`requirements.txt`, installs into the running container, and includes the
+dependency in the next image build. Agents may edit `requirements.txt` directly
+when the user wants the dependency recorded, but direct edits alone do not
+install the package into the running container.
+
 ### sanitizedHarnessLauncher.sh
 
 Wraps `claude` and `codex` invocations with `env -u` to strip

@@ -22,6 +22,20 @@ This skill activates when Claude is executing a task inside an AI Workbench proj
 
 ## What To Do
 
+- When a user request would hit a Workbench guardrail, explain the managed
+  container constraint and offer the supported path instead of first attempting
+  the blocked command.
+- For Python packages, guide the user to the AI Workbench Desktop App package
+  installer. It updates `requirements.txt`, installs the package into the
+  running container, and includes it in the image on the next build. Offer to
+  edit `requirements.txt` directly only when the user wants the dependency
+  recorded without immediate in-container installation by Workbench.
+- For system packages or `apt-get`, edit `apt.txt`, `preBuild.bash`, or
+  `postBuild.bash` and tell the user a container rebuild is required.
+- For `sudo`, explain that runtime escalation is unavailable and use a
+  build-time file instead.
+- For `docker`, `podman`, or `nvwb`, explain that those are host-side Workbench
+  actions and ask the user to run them outside the container.
 - Tell the user to rebuild the container after doing any of the following:
   - Editing `/project/requirements.txt`
   - Editing `/project/apt.txt`
@@ -43,7 +57,7 @@ This skill activates when Claude is executing a task inside an AI Workbench proj
 
 After editing a build-time or runtime file, always tell the user what action is needed. Examples:
 
-> I've updated `requirements.txt` to add the `transformers` package. You'll need to rebuild the container to effectuate this change.
+> I've updated `requirements.txt` to add the `transformers` package. To install it into the running container now, use the AI Workbench Desktop App package installer; otherwise it will be included after the next container rebuild.
 
 > I've added `CUDA_VISIBLE_DEVICES=0` to `variables.env`. This will take effect after a container restart — restart the container to effectuate them.
 

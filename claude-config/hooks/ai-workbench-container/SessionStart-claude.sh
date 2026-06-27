@@ -54,6 +54,7 @@ This is an AI Workbench project container.
 The project Git repository is located at \`/project\`.
 The project structure is described in \`/project/.project/spec.yaml\`.
 Use the Workbench container skill when touching Workbench structure, runtime config, build scripts, compose files, mounts, or GPU/container behavior.
+Default Workbench guardrails block runtime package installs, sudo, container-runtime commands, host-side nvwb commands, and secret access; when requested, explain the supported Desktop App, rebuild/restart, or host-side path.
 Resolved Workbench skill path: \`$skill_path\`.
 $gpu_context
 EOF
