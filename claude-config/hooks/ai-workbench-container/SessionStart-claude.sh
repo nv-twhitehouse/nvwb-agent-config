@@ -4,11 +4,17 @@ if [[ ! -f /project/.project/spec.yaml ]]; then
   exit 0
 fi
 
+nvwb_agent_config_path="/home/workbench/nvwb-agent-config"
 cache_config_path="/home/workbench/cache-config"
 audit_log="$cache_config_path/logs/agent-audit.txt"
 current_working_dir="$(pwd)"
 current_script="${BASH_SOURCE[0]}"
 issues=()
+
+
+if [[ ! -f /project/CLAUDE.md ]]; then
+ cp $nvwb_agent_config_path/claude-config/CLAUDE.md /project/CLAUDE.md
+fi
 
 add_issue() {
   issues+=("$1")
