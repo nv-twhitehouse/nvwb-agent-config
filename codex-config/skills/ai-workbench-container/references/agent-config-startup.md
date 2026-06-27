@@ -1,13 +1,16 @@
 # Agent Config Startup
 
-Read this before editing `/project/onStart.bash`, startup symlinks, seed files,
-cache initialization, sanitized launch aliases, or managed-settings install.
+Read this before editing `/project/onStart.bash`, startup symlinks, policy seed
+files, cache initialization, sanitized launch aliases, or managed-settings
+install.
 
 ## Responsibilities
 
 - `onStart.bash` owns runtime setup and repair.
-- SessionStart hooks should not recreate symlinks, render policy, seed files, or
-  patch config drift.
+- `onStart.bash` seeds policy files. SessionStart hooks may lazily seed the
+  agent-specific project guidance file on first agent launch.
+- SessionStart hooks should not recreate symlinks, render policy, or patch config
+  drift.
 - Development may happen in `/tmp/dev-nvwb-agent-config`; runtime uses
   `/home/workbench/nvwb-agent-config`.
 
@@ -18,8 +21,7 @@ cache initialization, sanitized launch aliases, or managed-settings install.
 2. Create or append to `cache-config/logs/agent-audit.txt`.
 3. Clone the config repo from `$nvwb_agent_config` if the config volume is empty.
 4. Link Claude hooks/skills into `~/.claude/`.
-5. Seed `/project/CLAUDE.md`, `/project/.claude/`, and
-   `/project/agentPolicyConfig.yaml` if missing.
+5. Seed `/project/.claude/` and `/project/agentPolicyConfig.yaml` if missing.
 6. Link Codex hooks/skills into `~/.codex/`.
 7. Add aliases that launch `claude` and `codex` through
    `scripts/sanitizedHarnessLauncher.sh`.

@@ -9,8 +9,10 @@ sanitized launch behavior.
 - Claude `SessionStart`: emit JSON with
   `hookSpecificOutput.hookEventName = "SessionStart"` and
   `hookSpecificOutput.additionalContext`.
-- Hooks should report compact context and append audit entries only.
-- Hooks should not recreate symlinks, render policy, seed files, or repair drift.
+- Hooks should report compact context, append audit entries, and lazily seed the
+  agent-specific project guidance file if it is missing.
+- Hooks should not recreate symlinks, render policy, seed policy files, or repair
+  drift.
 
 ## Audit
 

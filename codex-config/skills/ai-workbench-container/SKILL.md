@@ -15,7 +15,10 @@ or when the user asks about Workbench project files under `/project`.
 - Do not edit `/project/.project/*` without consulting the user first.
 - Do not run `nvwb` commands; the Workbench CLI is host-side and is not available here.
 - Do not print or log secret values from environment variables, credentials files, or any variables listed in `execution.secrets` in `/project/.project/spec.yaml`.
-- Do not make SessionStart hooks a second implementation of `onStart.bash`; startup setup and repair belong in `onStart.bash` or a shared helper.
+- Do not make SessionStart hooks a second implementation of `onStart.bash`;
+  startup setup and repair belong in `onStart.bash` or a shared helper. The
+  narrow exception is lazy seeding of the agent-specific project guidance file
+  on first agent launch.
 
 ## What To Do
 
@@ -50,6 +53,6 @@ action. Examples:
 ## References
 
 Read `references/ai-workbench-project-config-files.md` before editing Workbench configuration files.
-Read `references/agent-config-startup.md` before editing `onStart.bash`, startup symlinks, seed files, sanitized launch aliases, or managed-settings install behavior.
+Read `references/agent-config-startup.md` before editing `onStart.bash`, startup symlinks, policy seed files, sanitized launch aliases, or managed-settings install behavior.
 Read `references/agent-policy-rendering.md` before editing `agentPolicyConfig.yaml`, `agentPolicyTemplate.yaml`, `scripts/renderPolicy.py`, or Claude/Codex rendered config mappings.
 Read `references/agent-hooks-audit.md` before editing Claude/Codex hooks, skills, cache/audit behavior, or sanitized launch behavior.

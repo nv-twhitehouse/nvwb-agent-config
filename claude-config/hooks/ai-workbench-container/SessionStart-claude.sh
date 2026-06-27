@@ -11,14 +11,15 @@ current_working_dir="$(pwd)"
 current_script="${BASH_SOURCE[0]}"
 issues=()
 
-
-if [[ ! -f /project/CLAUDE.md ]]; then
- cp $nvwb_agent_config_path/claude-config/CLAUDE.md /project/CLAUDE.md
-fi
-
 add_issue() {
   issues+=("$1")
 }
+
+if [[ ! -f /project/CLAUDE.md ]]; then
+  if ! cp "$nvwb_agent_config_path/claude-config/CLAUDE.md" "/project/CLAUDE.md" 2>/dev/null; then
+    add_issue "WARNING: failed to seed /project/CLAUDE.md from $nvwb_agent_config_path/claude-config/CLAUDE.md."
+  fi
+fi
 
 resolved_script="$current_script"
 if command -v readlink >/dev/null 2>&1; then

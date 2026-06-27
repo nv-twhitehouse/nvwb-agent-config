@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ ! -f /project/.project/spec.yaml ]]; then
+  exit 0
+fi
+
 nvwb_agent_config_path="/home/workbench/nvwb-agent-config"
 cache_config_path="/home/workbench/cache-config"
 audit_log="$cache_config_path/logs/agent-audit.txt"
@@ -7,13 +11,15 @@ current_working_dir=$(pwd)
 current_script="${BASH_SOURCE[0]}"
 issues=()
 
-if [[ ! -f /project/AGENTS.md ]]; then
-  cp "$nvwb_agent_config_path/codex-config/AGENTS.md" "/project/AGENTS.md"
-fi
-
 add_issue() {
   issues+=("$1")
 }
+
+if [[ ! -f /project/AGENTS.md ]]; then
+  if ! cp "$nvwb_agent_config_path/codex-config/AGENTS.md" "/project/AGENTS.md" 2>/dev/null; then
+    add_issue "WARNING: failed to seed /project/AGENTS.md from $nvwb_agent_config_path/codex-config/AGENTS.md."
+  fi
+fi
 
 skill_path=""
 for candidate in "$HOME/.codex/skills/ai-workbench-container" "$HOME/.agents/skills/ai-workbench-container"; do

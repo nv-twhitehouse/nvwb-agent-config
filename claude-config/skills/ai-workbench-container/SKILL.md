@@ -15,7 +15,10 @@ This skill activates when Claude is executing a task inside an AI Workbench proj
 - Do NOT edit `/project/.project/*` without consulting the user
 - Do NOT run `nvwb` commands (Workbench CLI not available here)
 - Do NOT print or log any secret environment variables listed in the `execution.secrets` section of `/project/.project/spec.yaml`
-- Do NOT make SessionStart hooks a second implementation of `onStart.bash`; startup setup and repair belong in `onStart.bash` or a shared helper.
+- Do NOT make SessionStart hooks a second implementation of `onStart.bash`;
+  startup setup and repair belong in `onStart.bash` or a shared helper. The
+  narrow exception is lazy seeding of the agent-specific project guidance file
+  on first agent launch.
 
 ## What To Do
 
@@ -49,6 +52,6 @@ After editing a build-time or runtime file, always tell the user what action is 
 ## References
 
 See `references/ai-workbench-project-config-files.md` for detailed information about each configuration file.
-See `references/agent-config-startup.md` before editing `onStart.bash`, startup symlinks, seed files, sanitized launch aliases, or managed-settings install behavior.
+See `references/agent-config-startup.md` before editing `onStart.bash`, startup symlinks, policy seed files, sanitized launch aliases, or managed-settings install behavior.
 See `references/agent-policy-rendering.md` before editing `agentPolicyConfig.yaml`, `agentPolicyTemplate.yaml`, `scripts/renderPolicy.py`, or Claude/Codex rendered config mappings.
 See `references/agent-hooks-audit.md` before editing Claude/Codex hooks, skills, cache/audit behavior, or sanitized launch behavior.

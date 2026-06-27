@@ -40,14 +40,14 @@ scripts/
   sanitizedHarnessLauncher.sh     # Wrapper that strips secrets from agent process env
 
 claude-config/
-  CLAUDE.md                       # Default project guidance (seeded to /project/CLAUDE.md)
+  CLAUDE.md                       # Default Claude project guidance
   settings.json                   # Base settings (overlay target for renderPolicy.py)
   hooks/ai-workbench-container/   # Session hooks (symlinked into ~/.claude/hooks/)
   skills/ai-workbench-container/  # Skills (symlinked into ~/.claude/skills/)
 
 codex-config/
   config.toml                     # Base config (overlay target for renderPolicy.py)
-  AGENTS.md                       # Default project guidance
+  AGENTS.md                       # Default Codex project guidance
   hooks.json                      # Bootstrap hooks definition (seeded if missing)
   hooks/ai-workbench-container/   # Session hooks (symlinked into ~/.codex/hooks/)
   skills/ai-workbench-container/  # Skills (symlinked into ~/.codex/skills/)
@@ -70,8 +70,8 @@ Every container start runs this sequence:
    `$nvwb_agent_config` environment variable.
 3. **Bootstrap hooks and skills** — links hook script and skill directories
    from this repo into `~/.claude/` and `~/.codex/`.
-4. **Seed project files** — copies `CLAUDE.md` and `agentPolicyTemplate.yaml`
-   into `/project/` if they don't already exist.
+4. **Seed policy files** — copies `agentPolicyTemplate.yaml` to
+   `/project/agentPolicyConfig.yaml` if it doesn't already exist.
 5. **Render policy / seed hooks** — runs `renderPolicy.py /project/agentPolicyConfig.yaml`,
    which overlays the project's policy onto the base configs and seeds Codex
    hook config only when it is missing:
@@ -126,8 +126,10 @@ entries to `/home/workbench/cache-config/logs/agent-audit.txt`.
 
 - Codex `SessionStart` writes plain text context.
 - Claude `SessionStart` writes the JSON shape Claude expects for hook output.
+- Hooks lazily seed the agent-specific project guidance file on first launch:
+  Claude seeds `/project/CLAUDE.md`, and Codex seeds `/project/AGENTS.md`.
 - Hooks log their resolved path and SHA-256 for traceability.
-- Hooks do not render policy, repair symlinks, seed project files, or duplicate
+- Hooks do not render policy, repair symlinks, seed policy files, or duplicate
   `onStart.bash` setup logic.
 
 ### sanitizedHarnessLauncher.sh

@@ -1,2 +1,6 @@
 /config-cache/*
 !config-cache/.gitkeep
+
+__pycache__/
+*.py[cod]
+*$py.class
