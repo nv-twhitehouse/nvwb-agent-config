@@ -18,8 +18,10 @@ Read this before editing `/project/agentPolicyConfig.yaml`,
 - `cache-config/bypassAllowed.json`
 - cached policy/rendered files under `cache-config/`
 
-`renderPolicy.py` also seeds `~/.codex/hooks.json` if it is missing. Existing
-Codex hooks are preserved unless `--force-hooks` is used.
+`renderPolicy.py` also seeds `~/.codex/hooks.json` if it is missing by copying
+the bootstrap `codex-config/hooks.json` as-is. Existing Codex hooks are
+preserved unless `--force-hooks` is used. The renderer does not scan hook
+directories, rewrite hook command paths, or reconcile hook layout drift.
 
 ## Policy Sections
 

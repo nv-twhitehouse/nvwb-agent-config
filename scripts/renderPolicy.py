@@ -24,14 +24,12 @@ CACHE_DIR = Path(os.environ.get("NVWB_CACHE_DIR", "/home/workbench/cache-config"
 DEFAULT_POLICY = str(AGENT_CONFIG_DIR / "agentPolicyTemplate.yaml")
 
 CLAUDE_BASE = AGENT_CONFIG_DIR / "claude-config" / "settings.json"
-CLAUDE_HOOKS_DIR = AGENT_CONFIG_DIR / "claude-config" / "hooks"
 CLAUDE_OUT = Path(HOME_DIR) / ".claude" / "settings.json"
 
 CODEX_BASE = AGENT_CONFIG_DIR / "codex-config" / "config.toml"
 CODEX_OUT = Path(HOME_DIR) / ".codex" / "config.toml"
 
 CODEX_HOOKS_BASE = AGENT_CONFIG_DIR / "codex-config" / "hooks.json"
-CODEX_HOOKS_DIR = AGENT_CONFIG_DIR / "codex-config" / "hooks"
 CODEX_HOOKS_OUT = Path(HOME_DIR) / ".codex" / "hooks.json"
 
 CACHED_POLICY = CACHE_DIR / "agentPolicyConfig.yaml"
@@ -170,14 +168,6 @@ def render_claude(policy: dict):
 
     if existing_hooks is not None:
         merged["hooks"] = existing_hooks
-        hook_rewrites = 0
-    else:
-        merged, hook_rewrites = _rewrite_hooks_json(
-            merged,
-            _hook_relative_paths(CLAUDE_HOOKS_DIR),
-            CLAUDE_HOOKS_DIR,
-            ".claude",
-        )
 
     CLAUDE_OUT.parent.mkdir(parents=True, exist_ok=True)
     _clear_dangling_symlink(CLAUDE_OUT)
@@ -185,7 +175,7 @@ def render_claude(policy: dict):
         json.dump(merged, f, indent=2)
         f.write("\n")
 
-    audit(f"Rendered Claude settings -> {CLAUDE_OUT} ({hook_rewrites} hook command path rewrite(s))")
+    audit(f"Rendered Claude settings -> {CLAUDE_OUT}")
 
 
 # ---------------------------------------------------------------------------
@@ -277,85 +267,6 @@ def render_codex(policy: dict):
 # Codex — hooks.json
 # ---------------------------------------------------------------------------
 
-def _hook_command_prefixes(config_dir: str) -> tuple:
-    return (
-        f"$HOME/{config_dir}/hooks/",
-        f"~/{config_dir}/hooks/",
-        f"{HOME_DIR}/{config_dir}/hooks/",
-    )
-
-
-def _hook_relative_paths(hooks_dir: Path) -> dict:
-    """Map hook script basenames to their unique relative paths."""
-    paths = {}
-    duplicates = set()
-
-    if not hooks_dir.exists():
-        return paths
-
-    for hook_path in hooks_dir.rglob("*"):
-        if not hook_path.is_file():
-            continue
-
-        rel = hook_path.relative_to(hooks_dir).as_posix()
-        name = hook_path.name
-        if name in paths and paths[name] != rel:
-            duplicates.add(name)
-        else:
-            paths[name] = rel
-
-    for name in duplicates:
-        paths.pop(name, None)
-
-    return paths
-
-
-def _rewrite_hook_command(command: str, hook_paths: dict, hooks_dir: Path, config_dir: str) -> tuple:
-    for prefix in _hook_command_prefixes(config_dir):
-        if not command.startswith(prefix):
-            continue
-
-        remainder = command[len(prefix):]
-        script_ref, separator, args = remainder.partition(" ")
-        if not script_ref:
-            return command, False
-
-        if (hooks_dir / script_ref).is_file():
-            return command, False
-
-        resolved = hook_paths.get(Path(script_ref).name)
-        if not resolved:
-            return command, False
-
-        return f"{prefix}{resolved}{separator}{args}", True
-
-    return command, False
-
-
-def _rewrite_hooks_json(value, hook_paths: dict, hooks_dir: Path, config_dir: str) -> tuple:
-    if isinstance(value, dict):
-        rewritten = {}
-        changed = 0
-        for key, item in value.items():
-            if key == "command" and isinstance(item, str):
-                rewritten[key], did_change = _rewrite_hook_command(item, hook_paths, hooks_dir, config_dir)
-                changed += int(did_change)
-            else:
-                rewritten[key], child_changed = _rewrite_hooks_json(item, hook_paths, hooks_dir, config_dir)
-                changed += child_changed
-        return rewritten, changed
-
-    if isinstance(value, list):
-        rewritten = []
-        changed = 0
-        for item in value:
-            child, child_changed = _rewrite_hooks_json(item, hook_paths, hooks_dir, config_dir)
-            rewritten.append(child)
-            changed += child_changed
-        return rewritten, changed
-
-    return value, 0
-
 
 def seed_codex_hooks(force: bool = False):
     if CODEX_HOOKS_OUT.exists() and not force:
@@ -369,13 +280,6 @@ def seed_codex_hooks(force: bool = False):
     with open(CODEX_HOOKS_BASE) as f:
         hooks = json.load(f)
 
-    hooks, changed = _rewrite_hooks_json(
-        hooks,
-        _hook_relative_paths(CODEX_HOOKS_DIR),
-        CODEX_HOOKS_DIR,
-        ".codex",
-    )
-
     CODEX_HOOKS_OUT.parent.mkdir(parents=True, exist_ok=True)
     _clear_dangling_symlink(CODEX_HOOKS_OUT)
     with open(CODEX_HOOKS_OUT, "w") as f:
@@ -383,7 +287,7 @@ def seed_codex_hooks(force: bool = False):
         f.write("\n")
 
     action = "Re-seeded" if force else "Seeded"
-    audit(f"{action} Codex hooks    -> {CODEX_HOOKS_OUT} ({changed} command path rewrite(s))")
+    audit(f"{action} Codex hooks    -> {CODEX_HOOKS_OUT}")
 
 # ---------------------------------------------------------------------------
 # Managed settings — the tamper-proof lock (permissions only; sandbox stays in

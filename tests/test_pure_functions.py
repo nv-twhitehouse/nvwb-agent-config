@@ -206,49 +206,5 @@ class TestBuildManagedOverlay(unittest.TestCase):
         self.assertIn("Bash(sudo *)", overlay["permissions"]["deny"])
 
 
-class TestHookRewriting(unittest.TestCase):
-    def test_rewrite_with_match(self):
-        from pathlib import Path
-        import tempfile
-        with tempfile.TemporaryDirectory() as d:
-            hooks_dir = Path(d)
-            sub = hooks_dir / "ai-workbench-container"
-            sub.mkdir()
-            (sub / "start.sh").write_text("#!/bin/bash\n")
-
-            hook_paths = renderPolicy._hook_relative_paths(hooks_dir)
-            cmd = "$HOME/.codex/hooks/start.sh"
-            rewritten, changed = renderPolicy._rewrite_hook_command(cmd, hook_paths, hooks_dir, ".codex")
-            self.assertTrue(changed)
-            self.assertIn("ai-workbench-container/start.sh", rewritten)
-
-    def test_no_match_passthrough(self):
-        cmd = "/usr/bin/env bash"
-        rewritten, changed = renderPolicy._rewrite_hook_command(cmd, {}, None, ".codex")
-        self.assertFalse(changed)
-        self.assertEqual(rewritten, cmd)
-
-    def test_recursive_json_walk(self):
-        structure = {
-            "hooks": {
-                "SessionStart": [
-                    {"command": "$HOME/.codex/hooks/start.sh", "type": "command"}
-                ]
-            }
-        }
-        from pathlib import Path
-        import tempfile
-        with tempfile.TemporaryDirectory() as d:
-            hooks_dir = Path(d)
-            sub = hooks_dir / "sub"
-            sub.mkdir()
-            (sub / "start.sh").write_text("#!/bin/bash\n")
-            hook_paths = renderPolicy._hook_relative_paths(hooks_dir)
-
-            rewritten, count = renderPolicy._rewrite_hooks_json(structure, hook_paths, hooks_dir, ".codex")
-            self.assertEqual(count, 1)
-            self.assertIn("sub/start.sh", rewritten["hooks"]["SessionStart"][0]["command"])
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -12,9 +12,9 @@ import renderPolicy
 
 _MODULE_CONSTANTS = [
     "HOME_DIR", "AGENT_CONFIG_DIR", "CACHE_DIR",
-    "CLAUDE_BASE", "CLAUDE_HOOKS_DIR", "CLAUDE_OUT",
+    "CLAUDE_BASE", "CLAUDE_OUT",
     "CODEX_BASE", "CODEX_OUT",
-    "CODEX_HOOKS_BASE", "CODEX_HOOKS_DIR", "CODEX_HOOKS_OUT",
+    "CODEX_HOOKS_BASE", "CODEX_HOOKS_OUT",
     "CACHED_POLICY", "CACHED_CLAUDE", "CACHED_CODEX",
     "MANAGED_BLOCKED", "MANAGED_ALLOWED", "AUDIT_LOG",
 ]
@@ -32,17 +32,13 @@ def _build_sandbox(tmpdir):
 
     claude_cfg = agent / "claude-config"
     codex_cfg = agent / "codex-config"
-    (claude_cfg / "hooks" / "ai-workbench-container").mkdir(parents=True)
-    (codex_cfg / "hooks" / "ai-workbench-container").mkdir(parents=True)
+    claude_cfg.mkdir(parents=True)
+    codex_cfg.mkdir(parents=True)
 
     shutil.copy2(os.path.join(REPO, "claude-config", "settings.json"), claude_cfg / "settings.json")
     shutil.copy2(os.path.join(REPO, "codex-config", "config.toml"), codex_cfg / "config.toml")
     shutil.copy2(os.path.join(REPO, "codex-config", "hooks.json"), codex_cfg / "hooks.json")
     shutil.copy2(os.path.join(REPO, "agentPolicyTemplate.yaml"), agent / "agentPolicyTemplate.yaml")
-
-    for name in ("SessionStart-claude.sh", "SessionEnd-claude.sh"):
-        (claude_cfg / "hooks" / "ai-workbench-container" / name).write_text("#!/bin/bash\nexit 0\n")
-    (codex_cfg / "hooks" / "ai-workbench-container" / "SessionStart-codex.sh").write_text("#!/bin/bash\nexit 0\n")
 
     originals = {k: getattr(renderPolicy, k) for k in _MODULE_CONSTANTS}
 
@@ -50,12 +46,10 @@ def _build_sandbox(tmpdir):
     renderPolicy.AGENT_CONFIG_DIR = agent
     renderPolicy.CACHE_DIR = cache
     renderPolicy.CLAUDE_BASE = claude_cfg / "settings.json"
-    renderPolicy.CLAUDE_HOOKS_DIR = claude_cfg / "hooks"
     renderPolicy.CLAUDE_OUT = home / ".claude" / "settings.json"
     renderPolicy.CODEX_BASE = codex_cfg / "config.toml"
     renderPolicy.CODEX_OUT = home / ".codex" / "config.toml"
     renderPolicy.CODEX_HOOKS_BASE = codex_cfg / "hooks.json"
-    renderPolicy.CODEX_HOOKS_DIR = codex_cfg / "hooks"
     renderPolicy.CODEX_HOOKS_OUT = home / ".codex" / "hooks.json"
     renderPolicy.CACHED_POLICY = cache / "agentPolicyConfig.yaml"
     renderPolicy.CACHED_CLAUDE = cache / "claude-settings.json"

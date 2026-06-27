@@ -55,7 +55,7 @@ codex-config/
 
 cache-config/                     # Runtime cache (not committed)
 
-tests/                            # Unit tests for renderPolicy.py (63 tests, stdlib unittest)
+tests/                            # Unit tests for renderPolicy.py (60 tests, stdlib unittest)
 ```
 
 ## How It Works
