@@ -12,19 +12,6 @@
           }
         ]
       }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.codex/hooks/ai-workbench-container/ToolFailureGuard-codex.sh",
-            "timeout": 5,
-            "statusMessage": "Classifying Workbench tool failure"
-          }
-        ]
-      }
     ]
   }
 }
