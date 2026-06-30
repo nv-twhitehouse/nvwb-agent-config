@@ -47,3 +47,13 @@ the supported path.
 
 Prefer saying what can be done next over reporting only that something is
 blocked.
+
+## Sandbox Posture
+
+The container runs bwrap (bubblewrap) sandbox checks at startup. Before relying
+on sandbox isolation for a task, check the posture file:
+
+    cat /home/workbench/cache-config/logs/bwrap-summary.txt
+
+If any checks show `FAIL`, the sandbox may not fully enforce isolation for that
+capability. Note failures in your response so the user is aware.
