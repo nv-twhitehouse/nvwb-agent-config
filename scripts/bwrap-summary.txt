@@ -1,0 +1,27 @@
+=== bwrap sandbox readiness ===
+WARNING: bwrap is a lightweight sandbox, not a security boundary.
+These checks confirm bwrap functionality only. Passing does NOT mean
+the environment is secure or that sandboxed code cannot cause harm.
+Do not rely on bwrap as a substitute for proper security controls.
+
+Result: 14/15 PASSED, 1 FAILED
+
+bwrap  bubblewrap 0.6.1
+
+  PASS  Can launch a sandbox
+  PASS  Can build a custom filesystem layout
+  PASS  Read-only root prevents writes
+  PASS  Private /tmp is writable
+  PASS  Minimal runtime works (no full root)
+  PASS  Can mount /proc inside sandbox
+  PASS  User namespace isolation
+  PASS  PID namespace isolation
+  PASS  Network namespace isolation
+  PASS  IPC namespace isolation
+  FAIL  Can change hostname in sandbox
+  PASS  Synthetic /dev mount works
+  PASS  Device nodes (/dev/null, /dev/zero) available
+  PASS  Can clear and set environment variables
+  PASS  Full isolation with shared network
+
+Failed checks may prevent the agent sandbox from working correctly.

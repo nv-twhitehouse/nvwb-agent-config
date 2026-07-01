@@ -30,9 +30,7 @@ paths:
   # Paths agents may read but should not modify.
   read_only:
     - /project/.project
-    - /home/workbench/.codex
     - /home/workbench/.agents
-    - /home/workbench/.claude
     - /home/workbench/nvwb-agent-config
     - /home/workbench/cache-config
     - /project/onStart.bash
@@ -44,11 +42,6 @@ paths:
     - /home/workbench/.claude/.claude.json
     - /home/workbench/.claude/credentials.json
     - /home/workbench/.codex/auth.json
-    - /home/workbench/.codex/history.jsonl
-    - /home/workbench/.codex/sessions
-    - /home/workbench/.codex/memories
-    - /home/workbench/.codex/*.sqlite
-    - /home/workbench/.codex/*.sqlite-*
 
   # Sensitive project-relative patterns.
   private_project_patterns:

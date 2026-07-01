@@ -2,7 +2,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SUMMARY="$SCRIPT_DIR/bwrap-summary.txt"
+SUMMARY="/home/workbench/cache-config/logs/bwrap-summary.txt"
 
 fail=0
 pass_count=0
