@@ -30,7 +30,8 @@ paths:
   # Paths agents may read but should not modify.
   read_only:
     - /project/.project
-    - /home/workbench/.agents
+    - /project/preBuild.bash
+    - /project/postBuild.bash
     - /home/workbench/nvwb-agent-config
     - /home/workbench/cache-config
     - /project/onStart.bash
